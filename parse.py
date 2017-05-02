@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+#stdlib
 import email.header
 import contextlib
 import subprocess
@@ -10,13 +11,22 @@ import sys
 import os
 import re
 
+# 3rd party libs
 import click
 
+
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_CSV = 'output.csv'
-DATA_FIELDNAMES = ('date', 'from', 'subject')
 DEFAULT_CHARSET = 'utf-8'
 SHOW_COMMAND = 'xdg-open {output_file}'
+DEFAULT_OUTPUT_CSV = 'output.csv'
+
+# These are fields which by default will be parsed for
+# in the email headers of the message archive.
+DATA_FIELDNAMES = ('date', 'from', 'subject', )
+# This is the filename which by default will 
+# contain the results of the parsing.
+DEFAULT_OUTPUT_CSV = 'output.csv'
+
 
 
 class MessageArchiveUnpacker(object):
@@ -25,9 +35,10 @@ class MessageArchiveUnpacker(object):
 
         """
         Expects: A path to a message archive (tar.gz format).
-        Yields:  A tuple of each message path & the data
-                 extracted from it, including the fields
-                 found in DATA_FIELDNAMES.
+        Returns: An iterator over the set of io.BufferedReader
+                 instances, one for each message in the archive.
+                 These are able to have their `read` method
+                 called just once to get the message contents.
 
 
         """
@@ -129,9 +140,9 @@ def cli():
 
 @cli.command()
 @click.argument('archive-path')
-@click.option('--output-file', '-o', default=OUTPUT_CSV)
-@click.option('--show-output/--dont-show', '-s/-z')
-def run(archive_path, output_file, show_output):
+@click.option('--output-file', '-o', default=DEFAULT_OUTPUT_CSV)
+@click.option('--show-results/--dont-show-results', '-s/-z')
+def run(archive_path, output_file, show_results):
     unpacker = MessageArchiveUnpacker()
     parser = EmailParser()
     with get_csv_writer(output_file, DATA_FIELDNAMES) as writer:
@@ -141,9 +152,9 @@ def run(archive_path, output_file, show_output):
             data = parser.parse_message(msg.read().decode(DEFAULT_CHARSET))       
             writer.writerow(data)
 
-    absolute_output_file = os.path.join(CURRENT_DIR, OUTPUT_CSV)
+    absolute_output_file = os.path.join(CURRENT_DIR, output_file)
     print('Result is at: {}'.format(absolute_output_file))
-    if show_output:
+    if show_results:
         print('Opening...')
         subprocess.call(
             SHOW_COMMAND.format(output_file=output_file).split()
