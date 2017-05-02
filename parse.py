@@ -35,11 +35,10 @@ class MessageArchiveUnpacker(object):
 
         """
         Expects: A path to a message archive (tar.gz format).
-        Returns: An iterator over the set of io.BufferedReader
+        Returns: An iterator over some `io.BufferedReader`
                  instances, one for each message in the archive.
                  These are able to have their `read` method
                  called just once to get the message contents.
-
 
         """
         
