@@ -17,7 +17,7 @@ DEFAULT_CHARSET = 'utf-8'
 
 class MessageArchiveUnpacker(object):
 
-    def get_message_paths(self, path):
+    def get_messages(self, path):
 
         """
         Expects: A path to a message archive (tar.gz format).
@@ -27,11 +27,11 @@ class MessageArchiveUnpacker(object):
 
 
         """
-
-        archive = tarfile.open(name=path, mode='r:gz')
-        for tar_info in archive.getmembers():
-            if tar_info.isfile():
-                yield tar_info.name
+        
+        with tarfile.open(name=path, mode='r:gz') as archive:
+            for tar_info in archive.getmembers():
+                if tar_info.isfile():
+                    yield archive.extractfile(tar_info)
 
 
 class EmailParser(object):
@@ -112,7 +112,7 @@ def get_csv_writer(output_filepath, fieldnames):
             csvfile,
             fieldnames=fieldnames,
             extrasaction='ignore',
-            doublequote=False,
+            quoting=csv.QUOTE_NONE,
             delimiter='|',
             escapechar='\\'
         )
@@ -122,13 +122,11 @@ if __name__ == '__main__':
 
     unpacker = MessageArchiveUnpacker()
     parser = EmailParser()
-    with get_csv_writer(OUTPUT_CSV, DATA_FIELDNAMES) as writer:
+    with get_csv_writer(output_file, DATA_FIELDNAMES) as writer:
 
         writer.writeheader()
-        for message_path in unpacker.get_message_paths(sys.argv[1]):
-            with open(message_path, 'r') as msg:
-                data = parser.parse_message(msg.read())       
-                writer.writerow(data)
+        for msg in unpacker.get_messages(archive_path):
+            data = parser.parse_message(msg.read().decode(DEFAULT_CHARSET))       
+            writer.writerow(data)
 
-    print(os.path.join(CURRENT_DIR, OUTPUT_CSV))
 
