@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 
+import email.header
 import contextlib
+import subprocess
 import functools
 import tarfile
-import email.header
 import csv
 import sys
 import os
 import re
 
+import click
+
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_CSV = 'output.csv'
 DATA_FIELDNAMES = ('date', 'from', 'subject')
 DEFAULT_CHARSET = 'utf-8'
+SHOW_COMMAND = 'xdg-open {output_file}'
 
 
 class MessageArchiveUnpacker(object):
@@ -118,8 +122,16 @@ def get_csv_writer(output_filepath, fieldnames):
         )
 
 
-if __name__ == '__main__':
+@click.group()
+def cli():
+    pass
 
+
+@cli.command()
+@click.argument('archive-path')
+@click.option('--output-file', '-o', default=OUTPUT_CSV)
+@click.option('--show-output/--dont-show', '-s/-z')
+def run(archive_path, output_file, show_output):
     unpacker = MessageArchiveUnpacker()
     parser = EmailParser()
     with get_csv_writer(output_file, DATA_FIELDNAMES) as writer:
@@ -129,4 +141,14 @@ if __name__ == '__main__':
             data = parser.parse_message(msg.read().decode(DEFAULT_CHARSET))       
             writer.writerow(data)
 
+    absolute_output_file = os.path.join(CURRENT_DIR, OUTPUT_CSV)
+    print('Result is at: {}'.format(absolute_output_file))
+    if show_output:
+        print('Opening...')
+        subprocess.call(
+            SHOW_COMMAND.format(output_file=output_file).split()
+        )
 
+
+if __name__ == '__main__':
+    cli()
