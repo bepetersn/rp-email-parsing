@@ -87,16 +87,22 @@ class EmailParser(object):
                     # to capture.
                     header_name = match.group(1).lower()
                     if header_name in DATA_FIELDNAMES:
-
+                       
                         # before we collect the data,
                         # peek at the next line to make
                         # sure there wasn't a continuation
-                        if re.match(r'\s+', lines[i+1]):
-                            # TODO: handle this later.
-                            pass
+                        header_body = match.group(2)
+                        peek_value = 0
+                        while True:
+                            peek_value += 1
+                            next_line = lines[i+peek_value]
+                            if re.match(r'\s+', next_line):
+                                header_body += next_line
+                            else:
+                                break
                         
                         header_body = \
-                            decode_email_header(match.group(2))
+                            decode_email_header(header_body)
                         data.update({header_name: header_body})
                     else:
                         # No data we care about, so ignore.
