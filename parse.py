@@ -18,7 +18,6 @@ import click
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_CHARSET = 'utf-8'
 SHOW_COMMAND = 'xdg-open {output_file}'
-DEFAULT_OUTPUT_CSV = 'output.csv'
 
 # These are fields which by default will be parsed for
 # in the email headers of the message archive.
@@ -26,7 +25,6 @@ DATA_FIELDNAMES = ('date', 'from', 'subject', )
 # This is the filename which by default will 
 # contain the results of the parsing.
 DEFAULT_OUTPUT_CSV = 'output.csv'
-
 
 
 class MessageArchiveUnpacker(object):
@@ -100,9 +98,14 @@ class EmailParser(object):
                             else:
                                 break
                         
+                        # Headers containing non-ascii 
+                        # characters in their body have 
+                        # to be decoded before they're 
+                        # captured.
                         header_body = \
                             decode_email_header(header_body)
                         data.update({header_name: header_body})
+
                     else:
                         # No data we care about, so ignore.
                         continue
@@ -148,17 +151,18 @@ def cli():
 @click.option('--output-file', '-o', default=DEFAULT_OUTPUT_CSV)
 @click.option('--show-results/--dont-show-results', '-s/-z')
 def run(archive_path, output_file, show_results):
+
     unpacker = MessageArchiveUnpacker()
     parser = EmailParser()
     with get_csv_writer(output_file, DATA_FIELDNAMES) as writer:
 
         writer.writeheader()
         for msg in unpacker.get_messages(archive_path):
-            data = parser.parse_message(msg.read().decode(DEFAULT_CHARSET))       
-            writer.writerow(data)
+            data = parser.parse_message(msg.read().decode(DEFAULT_CHARSET))                 writer.writerow(data)
 
     absolute_output_file = os.path.join(CURRENT_DIR, output_file)
     print('Result is at: {}'.format(absolute_output_file))
+
     if show_results:
         print('Opening...')
         subprocess.call(
