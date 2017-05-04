@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 
-#stdlib
 import email.header
 import contextlib
 import subprocess
 import functools
 import tarfile
+import quopri
 import csv
 import sys
 import os
 import re
 
-# 3rd party libs
 import click
 
 
@@ -100,8 +99,7 @@ class EmailParser(object):
                         
                         # Headers containing non-ascii 
                         # characters in their body have 
-                        # to be decoded before they're 
-                        # captured.
+                        # to be decoded.
                         header_body = \
                             decode_email_header(header_body)
                         data.update({header_name: header_body})
@@ -119,6 +117,19 @@ class EmailParser(object):
 
 
 def decode_email_header(header):
+    """
+    See RFC 1522. Non-ascii email header bodies
+    can be encoded in two different ways, both 
+    of which have to be handled: quoted-printable
+    & base64 encoding.
+
+    """
+    header = decode_base64_encoded_email_header(header)
+    x = quopri.decodestring(header).decode(DEFAULT_CHARSET)
+    return x
+
+
+def decode_base64_encoded_email_header(header):
     result = ''
     for str_or_bytes, encoding in email.header.decode_header(header):
         if hasattr(str_or_bytes, 'decode'):
@@ -158,7 +169,8 @@ def run(archive_path, output_file, show_results):
 
         writer.writeheader()
         for msg in unpacker.get_messages(archive_path):
-            data = parser.parse_message(msg.read().decode(DEFAULT_CHARSET))                 writer.writerow(data)
+            data = parser.parse_message(msg.read().decode(DEFAULT_CHARSET))
+            writer.writerow(data)
 
     absolute_output_file = os.path.join(CURRENT_DIR, output_file)
     print('Result is at: {}'.format(absolute_output_file))
